@@ -2,27 +2,16 @@
 // parameter when you first load the API. For example:
 // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
 
-let map, infoWindow;
+let map, infoWindow, pos, placesService, getNextPage
 
-function initMap() {
-    // Create the map.
-    const pyrmont = { lat: -33.866, lng: 151.196 };
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: pyrmont,
-        zoom: 17,
-        mapId: "8d193001f940fde3",
-    });
+const initMap = async () => {
     infoWindow = new google.maps.InfoWindow();
-
-    // Create the places service.
-    const service = new google.maps.places.PlacesService(map);
-    let getNextPage;
     const moreButton = document.getElementById("more");
     console.log('navigator.geolocation', navigator.geolocation)
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const pos = {
+                pos = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                 };
@@ -30,7 +19,38 @@ function initMap() {
                 infoWindow.setPosition(pos);
                 infoWindow.setContent("Location found.");
                 infoWindow.open(map);
-                map.setCenter(pos);
+                // map.setCenter(pos);
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: pos,
+                    zoom: 17,
+                    mapId: "8d193001f940fde3",
+                });
+
+                console.log('map', map)
+
+                // Create the places service.
+                placesService = new google.maps.places.PlacesService(map);
+                
+                // Perform a nearby search.
+                console.log('service', placesService)
+                placesService.nearbySearch(
+                    { location: pos, radius: 1000, type: "store" },
+                    (results, status, pagination) => {
+                        if (status !== "OK" || !results) {
+                            console.error(status);
+                            return;
+                        }
+
+                        addPlaces(results, map);
+                        moreButton.disabled = !pagination || !pagination.hasNextPage;
+                        if (pagination && pagination.hasNextPage) {
+                            getNextPage = () => {
+                                // Note: nextPage will call the same handler function as the initial call
+                                pagination.nextPage();
+                            };
+                        }
+                    }
+                );
             },
             () => {
                 handleLocationError(true, infoWindow, map.getCenter());
@@ -41,29 +61,13 @@ function initMap() {
         handleLocationError(false, infoWindow, map.getCenter());
     }
 
-    moreButton.onclick = function () {
+    moreButton.onclick = () => {
+        console.log(moreButton.onclick)
         moreButton.disabled = true;
         if (getNextPage) {
             getNextPage();
         }
     };
-
-    // Perform a nearby search.
-    service.nearbySearch(
-        { location: pyrmont, radius: 500, type: "store" },
-        (results, status, pagination) => {
-            if (status !== "OK" || !results) return;
-
-            addPlaces(results, map);
-            moreButton.disabled = !pagination || !pagination.hasNextPage;
-            if (pagination && pagination.hasNextPage) {
-                getNextPage = () => {
-                    // Note: nextPage will call the same handler function as the initial call
-                    pagination.nextPage();
-                };
-            }
-        }
-    );
 }
 
 function addPlaces(places, map) {
