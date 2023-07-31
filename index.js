@@ -2,7 +2,7 @@
 // parameter when you first load the API. For example:
 // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
 
-let map, infoWindow, pos, placesService, getNextPage
+let map, infoWindow, pos, placesService, getNextPage, curPosMarker
 
 const initMap = async () => {
     infoWindow = new google.maps.InfoWindow();
@@ -19,20 +19,23 @@ const initMap = async () => {
                 infoWindow.setPosition(pos);
                 infoWindow.setContent("Location found.");
                 infoWindow.open(map);
-                // map.setCenter(pos);
+                
                 map = new google.maps.Map(document.getElementById("map"), {
                     center: pos,
                     zoom: 17,
                     mapId: "8d193001f940fde3",
                 });
 
-                console.log('map', map)
+                curPosMarker = new google.maps.Marker({
+                    position: pos,
+                    map,
+                    title: "Hello World!",
+                });
 
                 // Create the places service.
                 placesService = new google.maps.places.PlacesService(map);
                 
                 // Perform a nearby search.
-                console.log('service', placesService)
                 placesService.nearbySearch(
                     { location: pos, radius: 1000, type: "store" },
                     (results, status, pagination) => {
@@ -112,3 +115,28 @@ function handleLocationError(browserHasGeolocation, infoWindow, pos) {
 }
 
 window.initMap = initMap;
+
+let id;
+let target;
+let options;
+
+function success(pos) {
+    curPosMarker.setPosition(new google.maps.LatLng(pos.coords.latitude, pos.coords.longitude));
+}
+
+function error(err) {
+    console.error(`ERROR(${err.code}): ${err.message}`);
+}
+
+target = {
+    latitude: 0,
+    longitude: 0,
+};
+
+options = {
+    enableHighAccuracy: false,
+    timeout: 5000,
+    maximumAge: 0,
+};
+
+id = navigator.geolocation.watchPosition(success, error, options);
